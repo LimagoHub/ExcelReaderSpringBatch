@@ -1,17 +1,23 @@
 package de.ing.excelreader.batch;
 
+import java.io.FileNotFoundException;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.step.skip.SkipLimitExceededException;
+import org.springframework.batch.core.step.skip.SkipPolicy;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.FlatFileParseException;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
@@ -35,6 +41,8 @@ public class SpringBatchHelloWorldConfig {
         return stepBuilderFactory.get("step1")
                 .<Employee, Employee>chunk(2)
                 .reader(employeeItemReader())
+                .faultTolerant()
+                .skipPolicy(createSkipPolicy())
                 .processor(employeeItemProcessor())
                 .writer(employeeItemWriter())
                 .build();
@@ -43,6 +51,7 @@ public class SpringBatchHelloWorldConfig {
     @Bean
     public Job listEmployeesJob(Step step1) throws Exception {
         return jobBuilderFactory.get("listEmployeesJob").incrementer(new RunIdIncrementer())
+        		
                 .start(step1)
                 .build();
     }
@@ -93,5 +102,33 @@ public class SpringBatchHelloWorldConfig {
                 }
             }
         };
+    }
+    
+    @Bean
+    SkipPolicy createSkipPolicy() {
+    	
+    	 
+        return new SkipPolicy() {
+        		private final Logger logger = LoggerFactory.getLogger("badRecordLogger");
+        	
+			
+				@Override
+		        public boolean shouldSkip(Throwable exception, int skipCount) throws SkipLimitExceededException {
+		            if (exception instanceof FileNotFoundException) {
+		                return false;
+		            } else if (exception instanceof FlatFileParseException && skipCount <= 5) {
+		                FlatFileParseException ffpe = (FlatFileParseException) exception;
+		                StringBuilder errorMessage = new StringBuilder();
+		                errorMessage.append("An error occured while processing the " + ffpe.getLineNumber()
+		                        + " line of the file. Below was the faulty " + "input.\n");
+		                errorMessage.append(ffpe.getInput() + "\n");
+		                logger.error("{}", errorMessage.toString());
+		                return true;
+		            } else {
+		                return false;
+		            }
+		        }
+			
+		};
     }
 }
