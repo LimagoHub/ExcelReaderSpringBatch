@@ -3,14 +3,21 @@ package de.ing.excelreader.batch;
 import java.io.FileNotFoundException;
 import java.util.List;
 
+import org.springframework.core.io.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.ChunkListener;
+import org.springframework.batch.core.ExitStatus;
+import org.springframework.batch.core.ItemReadListener;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.skip.SkipLimitExceededException;
 import org.springframework.batch.core.step.skip.SkipPolicy;
 import org.springframework.batch.item.ItemProcessor;
@@ -18,10 +25,16 @@ import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.FlatFileParseException;
+import org.springframework.batch.item.file.MultiResourceItemReader;
+import org.springframework.batch.item.file.ResourceAwareItemReaderItemStream;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.batch.repeat.CompletionPolicy;
+import org.springframework.batch.repeat.RepeatContext;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -35,12 +48,15 @@ public class SpringBatchHelloWorldConfig {
 
     @Autowired
     private StepBuilderFactory stepBuilderFactory;
+    
+    @Value("classpath:*.csv")
+    private Resource[] inputResources;
 
     @Bean
     public Step step1() {
         return stepBuilderFactory.get("step1")
                 .<Employee, Employee>chunk(2)
-                .reader(employeeItemReader())
+                .reader(multiResourceItemReader())
                 .faultTolerant()
                 .skipPolicy(createSkipPolicy())
                 .processor(employeeItemProcessor())
@@ -55,6 +71,17 @@ public class SpringBatchHelloWorldConfig {
                 .start(step1)
                 .build();
     }
+    
+    @Bean
+    public MultiResourceItemReader<Employee> multiResourceItemReader() 
+    {
+        MultiResourceItemReader<Employee> resourceItemReader = new MultiResourceItemReader<Employee>();
+        resourceItemReader.setResources( inputResources);
+        resourceItemReader.setDelegate((ResourceAwareItemReaderItemStream<? extends Employee>) employeeItemReader());
+        
+        return resourceItemReader;
+    }
+    
 
     @Bean
     ItemReader<Employee> employeeItemReader() {
@@ -72,6 +99,8 @@ public class SpringBatchHelloWorldConfig {
         defaultLineMapper.setLineTokenizer(delimitedLineTokenizer);
         defaultLineMapper.setFieldSetMapper(fieldSetMapper);
         reader.setLineMapper(defaultLineMapper);
+        
+       
 
         return reader;
     }
