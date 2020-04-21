@@ -49,7 +49,7 @@ public class SpringBatchHelloWorldConfig {
 	public Step step1() {
 		return stepBuilderFactory.get("step1").<Employee, Employee>chunk(2)
 				.listener(new MyListener())
-				.reader(multiResourceItemReader())
+				.reader(employeeItemReader)
 				.faultTolerant().skipPolicy(createSkipPolicy())
 				.processor(employeeItemProcessor())
 				.writer(employeeItemWriter()).build();
