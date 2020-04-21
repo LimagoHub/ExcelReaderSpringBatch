@@ -122,11 +122,17 @@
 			<artifactId>spring-kafka-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/org.apache.poi/poi -->
+		
+
 		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi</artifactId>
-			<version>4.1.2</version>
+			<groupId>org.springframework.batch</groupId>
+			<artifactId>spring-batch-infrastructure</artifactId>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/com.github.kumarpankaj18/spring-batch-excel -->
+		<dependency>
+			<groupId>com.github.kumarpankaj18</groupId>
+			<artifactId>spring-batch-excel</artifactId>
+			<version>1.0.6</version>
 		</dependency>
 
 	</dependencies>
